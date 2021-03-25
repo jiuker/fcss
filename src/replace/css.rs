@@ -61,7 +61,7 @@ fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
                         .collect()
                 },
             ),
-            take_till(|c| c == '}'),
+            delimited(take_till(|c| c == '}'), tag("}"), multispace0),
         ),
     )(i)
 }
@@ -74,9 +74,7 @@ pub fn parse_vec_css(i: &str) -> IResult<&str, CSS> {
         "root",
         delimited(
             multispace0,
-            map(separated_list0(tag("}"), parse_key_value), |vec| {
-                CSS::VecSelector(vec)
-            }),
+            map(separated_list0(tag("}"), parse_key_value), CSS::VecSelector),
             multispace0,
         ),
     )(i)
