@@ -1,4 +1,4 @@
-use nom::bytes::complete::take_while;
+use nom::bytes::complete::{is_a, tag_no_case, take_while};
 use nom::multi::separated_list1;
 use nom::{
     branch::alt,
@@ -16,33 +16,40 @@ use std::collections::HashMap;
 #[derive(Debug, PartialEq)]
 pub enum CSS {
     Object(HashMap<String, CSS>),
-    Selector(String),
+    Selector(HashMap<String, CSS>),
     Value(String),
+    VecSelector(Vec<CSS>),
 }
 
 fn selector(i: &str) -> IResult<&str, CSS> {
     let (i, _) = multispace0(i)?;
     let (i, resp) = take_while(|c| c != '{')(i)?;
-    return Ok((i, CSS::Selector(resp.to_string())));
+    let mut s_hash = HashMap::new();
+    let (i, v_hash) = object(i)?;
+    s_hash.insert(resp.to_string(), CSS::Object(v_hash));
+    let (i, _) = multispace0(i)?;
+    return Ok((i, CSS::Selector(s_hash)));
 }
 fn key(i: &str) -> IResult<&str, &str> {
-    dbg!(i);
     let (i, _) = multispace0(i)?;
-    dbg!(i);
     let (i, resp) = take_while(|c| c != ':')(i)?;
-    dbg!(i);
+    let (i, _) = multispace0(i)?;
     return Ok((i, resp));
 }
 fn value(i: &str) -> IResult<&str, CSS> {
-    dbg!(i);
     let (i, _) = multispace0(i)?;
-    dbg!(i);
     let (i, resp) = take_while(|c| c != ';')(i)?;
-    dbg!(i);
+    let (i, _) = multispace0(i)?;
     return Ok((i, CSS::Value(resp.to_string())));
 }
+// 判断是否是最后一个value
+fn break_object(i: char) -> bool {
+    if i != ':' {
+        return false;
+    }
+    return true;
+}
 fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
-    println!("{}", i);
     context(
         "object",
         delimited(
@@ -50,7 +57,7 @@ fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
             map(
                 separated_list0(
                     tag(";"),
-                    separated_pair(key, tag(":"), delimited(multispace0, value, multispace0)),
+                    separated_pair(key, take_while(break_object), value),
                 ),
                 |tuple_vec| {
                     tuple_vec
@@ -62,23 +69,31 @@ fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
                         .collect()
                 },
             ),
-            delimited(tag(";"), multispace0, tag("")),
+            multispace0,
         ),
     )(i)
 }
-fn parse_key_value(i: &str) -> IResult<&str, HashMap<String, CSS>> {
-    context("selector", delimited(selector, object, multispace0))(i)
+fn parse_key_value(i: &str) -> IResult<&str, CSS> {
+    context("selector", selector)(i)
 }
 pub fn root(i: &str) -> IResult<&str, CSS> {
+    context("root", parse_key_value)(i)
+}
+pub fn parse_vec_css(i: &str) -> IResult<&str, CSS> {
     context(
         "root",
-        delimited(multispace0, map(parse_key_value, CSS::Object), multispace0),
+        delimited(
+            multispace0,
+            map(separated_list0(tag("}"), parse_key_value), |vec| {
+                CSS::VecSelector(vec)
+            }),
+            multispace0,
+        ),
     )(i)
 }
-
 #[test]
 fn testNewCSS() {
-    let data = root(
+    let data = parse_vec_css(
         "
     .a{
             width:10px;
