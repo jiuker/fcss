@@ -68,9 +68,7 @@ fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
 fn parse_key_value(i: &str) -> IResult<&str, CSS> {
     context("selector", selector)(i)
 }
-pub fn root(i: &str) -> IResult<&str, CSS> {
-    context("root", parse_key_value)(i)
-}
+
 pub fn parse_vec_css(i: &str) -> IResult<&str, CSS> {
     context(
         "root",
