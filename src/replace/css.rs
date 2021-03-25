@@ -1,4 +1,5 @@
-use nom::bytes::complete::{is_a, tag_no_case, take_while};
+use nom::bytes::complete::{is_a, tag_no_case, take_till, take_while};
+use nom::bytes::streaming::take_until;
 use nom::multi::separated_list1;
 use nom::{
     branch::alt,
@@ -42,23 +43,14 @@ fn value(i: &str) -> IResult<&str, CSS> {
     let (i, _) = multispace0(i)?;
     return Ok((i, CSS::Value(resp.to_string())));
 }
-// 判断是否是最后一个value
-fn break_object(i: char) -> bool {
-    if i != ':' {
-        return false;
-    }
-    return true;
-}
+
 fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
     context(
         "object",
         delimited(
             tag("{"),
             map(
-                separated_list0(
-                    tag(";"),
-                    separated_pair(key, take_while(break_object), value),
-                ),
+                separated_list0(tag(";"), separated_pair(key, tag(":"), value)),
                 |tuple_vec| {
                     tuple_vec
                         .into_iter()
@@ -69,7 +61,7 @@ fn object(i: &str) -> IResult<&str, HashMap<String, CSS>> {
                         .collect()
                 },
             ),
-            multispace0,
+            take_till(|c| c == '}'),
         ),
     )(i)
 }
@@ -99,6 +91,11 @@ fn testNewCSS() {
             width:10px;
             height:1px;
             border:1px solid #123123;
+        }
+ .b{
+            width-1:10px;
+            height-1:1px;
+            border-1:1px solid #123123;
         }
     ",
     );
