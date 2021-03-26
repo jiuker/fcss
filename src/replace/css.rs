@@ -1,5 +1,5 @@
 use crate::replace::css::CSS::Object;
-use nom::bytes::complete::{is_a, is_not, tag_no_case, take_till, take_while};
+use nom::bytes::complete::{is_a, is_not, tag_no_case, take_till, take_while, take_while1};
 use nom::bytes::streaming::take_until;
 use nom::error::ErrorKind;
 use nom::error::VerboseErrorKind::Context;
@@ -24,8 +24,8 @@ pub enum CSS {
     VecObject(Vec<CSS>),
 }
 fn selector_object(i: &str) -> IResult<&str, CSS> {
-    dbg!("selector_str", i);
-    let (i, rsp) = take_while(|c| c != '{' && c != ':' && c != ';')(i)?;
+    dbg!("selector_object", i);
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with("{") {
         dbg!(i);
         let mut h = HashMap::new();
@@ -125,7 +125,8 @@ fn root(i: &str) -> IResult<&str, CSS> {
 #[test]
 fn testNewCSS() {
     let data = root(
-        ".a{
+        "
+        .a{
             width:10px;
             height:1px;
             border:1px solid #123123;
