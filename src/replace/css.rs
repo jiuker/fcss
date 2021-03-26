@@ -24,12 +24,23 @@ pub enum CSS {
     VecObject(Vec<CSS>),
 }
 fn selector_object(i: &str) -> IResult<&str, CSS> {
-    dbg!("selector_object", i);
+    dbg!("selector_object", i.len(), i);
     let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with("{") {
-        dbg!(i);
+        dbg!(i.len(), i);
         let mut h = HashMap::new();
-        let (i, node) = delimited(multispace0, alt((object, selector_object)), multispace0)(i)?;
+        let (i, node) = delimited(
+            multispace0,
+            alt((
+                object,
+                delimited(
+                    tag("{"),
+                    delimited(multispace0, parse_vec, multispace0),
+                    tag("}"),
+                ),
+            )),
+            multispace0,
+        )(i)?;
         h.insert(rsp.to_string(), node);
         return Ok((i, CSS::Object(h)));
     }
@@ -37,7 +48,7 @@ fn selector_object(i: &str) -> IResult<&str, CSS> {
     return Ok(("", CSS::Value("".to_string())));
 }
 fn object_key_str(i: &str) -> IResult<&str, &str> {
-    dbg!("object_key_str", i);
+    dbg!("object_key_str", i.len(), i);
     let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with(":") {
         dbg!(i);
@@ -47,7 +58,7 @@ fn object_key_str(i: &str) -> IResult<&str, &str> {
     return Ok(("", ""));
 }
 fn object_value_str(i: &str) -> IResult<&str, &str> {
-    dbg!("object_value_str", i);
+    dbg!("object_value_str", i.len(), i);
     let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with(";") {
         // 判断是否结束
@@ -65,7 +76,7 @@ fn object_value_str(i: &str) -> IResult<&str, &str> {
     return Ok(("", ""));
 }
 fn string(i: &str) -> IResult<&str, &str> {
-    dbg!("string", i);
+    dbg!("string", i.len(), i);
     context(
         "string",
         delimited(
@@ -77,7 +88,7 @@ fn string(i: &str) -> IResult<&str, &str> {
 }
 
 fn object(i: &str) -> IResult<&str, CSS> {
-    dbg!("object", i);
+    dbg!("object", i.len(), i);
     context(
         "object",
         delimited(
@@ -98,7 +109,7 @@ fn object(i: &str) -> IResult<&str, CSS> {
 }
 
 fn parse(i: &str) -> IResult<&str, CSS> {
-    dbg!("parse", i);
+    dbg!("parse", i.len(), i);
     context(
         "value",
         delimited(
@@ -113,10 +124,10 @@ fn parse(i: &str) -> IResult<&str, CSS> {
     )(i)
 }
 
-fn root(i: &str) -> IResult<&str, CSS> {
-    dbg!("root", i);
+fn parse_vec(i: &str) -> IResult<&str, CSS> {
+    dbg!("parse_vec", i.len(), i);
     context(
-        "root",
+        "vec",
         map(separated_list0(is_a(".#@{}"), parse), |vec| {
             CSS::VecObject(vec)
         }),
@@ -124,38 +135,22 @@ fn root(i: &str) -> IResult<&str, CSS> {
 }
 #[test]
 fn testNewCSS() {
-    let data = root(
+    let data = parse_vec(
         "
         .a{
-            width:10px;
-            height:1px;
-            border:1px solid #123123;
-        }
- .b{
-            width-1:10px;
-            height-1:1px;
-            border-1:1px solid #123123;
-        }
-.e{
-            width-1:10px;
-            height-1:1px;
-            border-1:1px solid #123123;
-        }
-.f{
-            width-1:10px;
                 width-1:10px;
-
-}
-.g{
+                width-2:10px;
+            }
+       .g{
             .h{
                 width-1:10px;
-                width-1:10px;
+                width-2:10px;
             }
             .i{
                 width-1:10px;
-                width-1:10px;
+                width-2:10px;
             }
-}
+        }
     ",
     );
     dbg!(data);
