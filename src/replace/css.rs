@@ -1,6 +1,7 @@
 use crate::replace::css::CSS::Object;
 use nom::bytes::complete::{is_a, is_not, tag_no_case, take_till, take_while};
 use nom::bytes::streaming::take_until;
+use nom::error::ErrorKind;
 use nom::error::VerboseErrorKind::Context;
 use nom::multi::separated_list1;
 use nom::{
@@ -24,7 +25,6 @@ pub enum CSS {
 }
 fn selector_object(i: &str) -> IResult<&str, CSS> {
     dbg!("selector_str", i);
-    let (i, _) = multispace0(i)?;
     let (i, rsp) = take_while(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with("{") {
         dbg!(i);
@@ -96,12 +96,7 @@ fn object(i: &str) -> IResult<&str, CSS> {
         ),
     )(i)
 }
-fn value(i: &str) -> IResult<&str, &str> {
-    dbg!("value", i);
-    let (i, _) = multispace0(i)?;
-    let (i, rsp) = take_while(|c| c != ';')(i)?;
-    return Ok((i, rsp));
-}
+
 fn parse(i: &str) -> IResult<&str, CSS> {
     dbg!("parse", i);
     context(
@@ -110,28 +105,27 @@ fn parse(i: &str) -> IResult<&str, CSS> {
             multispace0,
             alt((
                 selector_object,
-                delimited(multispace0, object, multispace0),
+                object,
                 map(string, |d| CSS::Value(d.to_string())),
             )),
             multispace0,
         ),
     )(i)
 }
+
 fn root(i: &str) -> IResult<&str, CSS> {
     dbg!("root", i);
     context(
         "root",
-        map(
-            separated_list0(is_a(".#@"), delimited(multispace0, parse, multispace0)),
-            |vec| CSS::VecObject(vec),
-        ),
+        map(separated_list0(is_a(".#@{}"), parse), |vec| {
+            CSS::VecObject(vec)
+        }),
     )(i)
 }
 #[test]
 fn testNewCSS() {
     let data = root(
-        "
-    .a{
+        ".a{
             width:10px;
             height:1px;
             border:1px solid #123123;
@@ -141,13 +135,14 @@ fn testNewCSS() {
             height-1:1px;
             border-1:1px solid #123123;
         }
-@d{
-   .1{
+.e{
             width-1:10px;
-   }
-    .2{
+            height-1:1px;
+            border-1:1px solid #123123;
+        }
+@f{
+            width-1:10px;
                 width-1:10px;
-    }
 
 }
     ",
