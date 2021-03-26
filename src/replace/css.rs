@@ -29,7 +29,7 @@ fn selector_object(i: &str) -> IResult<&str, CSS> {
     if i.starts_with("{") {
         dbg!(i);
         let mut h = HashMap::new();
-        let (i, node) = delimited(multispace0, object, multispace0)(i)?;
+        let (i, node) = delimited(multispace0, alt((object, selector_object)), multispace0)(i)?;
         h.insert(rsp.to_string(), node);
         return Ok((i, CSS::Object(h)));
     }
@@ -38,7 +38,7 @@ fn selector_object(i: &str) -> IResult<&str, CSS> {
 }
 fn object_key_str(i: &str) -> IResult<&str, &str> {
     dbg!("object_key_str", i);
-    let (i, rsp) = take_while(|c| c != '{' && c != ':' && c != ';')(i)?;
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with(":") {
         dbg!(i);
         return Ok((i, rsp));
@@ -48,7 +48,7 @@ fn object_key_str(i: &str) -> IResult<&str, &str> {
 }
 fn object_value_str(i: &str) -> IResult<&str, &str> {
     dbg!("object_value_str", i);
-    let (i, rsp) = take_while(|c| c != '{' && c != ':' && c != ';')(i)?;
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
     if i.starts_with(";") {
         // 判断是否结束
         let (_i, _) = tag(";")(i)?;
@@ -141,10 +141,20 @@ fn testNewCSS() {
             height-1:1px;
             border-1:1px solid #123123;
         }
-@f{
+.f{
             width-1:10px;
                 width-1:10px;
 
+}
+.g{
+            .h{
+                width-1:10px;
+                width-1:10px;
+            }
+            .i{
+                width-1:10px;
+                width-1:10px;
+            }
 }
     ",
     );
