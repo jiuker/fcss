@@ -161,12 +161,18 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 
 fn parse_vec(i: &str) -> IResult<&str, CSS> {
     // dbg!("parse_vec", i.len(), i);
-    context(
-        "vec",
-        map(separated_list0(is_a(".#@{}"), parse), |vec| {
-            CSS::VecObject(vec)
-        }),
-    )(i)
+    let mut rsl = vec![];
+    let mut d = i.clone();
+    loop {
+        let (i, c) = parse(d)?;
+        let (i, _) = multispace0(i)?;
+        d = i;
+        rsl.push(c);
+        if d == "" {
+            break;
+        }
+    }
+    return Ok((d, CSS::VecObject(rsl)));
 }
 #[test]
 fn testNewCSS() {
