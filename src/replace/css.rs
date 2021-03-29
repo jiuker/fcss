@@ -24,10 +24,10 @@ pub enum CSS {
     VecObject(Vec<CSS>),
 }
 fn selector_object(i: &str) -> IResult<&str, CSS> {
-    dbg!("selector_object", i.len(), i);
-    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
+    // dbg!("selector_object", i.len(), i);
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';' && c != '}')(i)?;
     if i.starts_with("{") {
-        dbg!(i.len(), i);
+        // dbg!(i.len(), i);
         let mut h = HashMap::new();
         let (i, node) = delimited(
             multispace0,
@@ -48,35 +48,40 @@ fn selector_object(i: &str) -> IResult<&str, CSS> {
     return Ok(("", CSS::Value("".to_string())));
 }
 fn object_key_str(i: &str) -> IResult<&str, &str> {
-    dbg!("object_key_str", i.len(), i);
-    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
+    // dbg!("object_key_str", i.len(), i);
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';' && c != '}')(i)?;
     if i.starts_with(":") {
-        dbg!(i);
+        // dbg!(i);
         return Ok((i, rsp));
     }
     tag(":")(i)?;
     return Ok(("", ""));
 }
 fn object_value_str(i: &str) -> IResult<&str, &str> {
-    dbg!("object_value_str", i.len(), i);
-    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';')(i)?;
+    // dbg!("object_value_str", i.len(), i);
+    let (i, rsp) = take_while1(|c| c != '{' && c != ':' && c != ';' && c != '}')(i)?;
     if i.starts_with(";") {
         // 判断是否结束
         let (_i, _) = tag(";")(i)?;
         let (_i, _) = multispace0(_i)?;
         if _i.starts_with("}") {
             // 这个是结束标志;
-            dbg!(_i);
+            // dbg!(_i);
             return Ok((_i, rsp));
         }
-        dbg!(i);
+        // dbg!(i);
         return Ok((i, rsp));
+    }
+    // 有可能没有;就表示结束
+    let (i, _) = multispace0(i)?;
+    if i.starts_with("}") {
+        return Ok((i, rsp.trim()));
     }
     tag(";")(i)?;
     return Ok(("", ""));
 }
 fn string(i: &str) -> IResult<&str, &str> {
-    dbg!("string", i.len(), i);
+    // dbg!("string", i.len(), i);
     context(
         "string",
         delimited(
@@ -88,7 +93,7 @@ fn string(i: &str) -> IResult<&str, &str> {
 }
 
 fn object(i: &str) -> IResult<&str, CSS> {
-    dbg!("object", i.len(), i);
+    // dbg!("object", i.len(), i);
     context(
         "object",
         delimited(
@@ -109,7 +114,7 @@ fn object(i: &str) -> IResult<&str, CSS> {
 }
 
 fn parse(i: &str) -> IResult<&str, CSS> {
-    dbg!("parse", i.len(), i);
+    // dbg!("parse", i.len(), i);
     context(
         "value",
         delimited(
@@ -125,7 +130,7 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 }
 
 fn parse_vec(i: &str) -> IResult<&str, CSS> {
-    dbg!("parse_vec", i.len(), i);
+    // dbg!("parse_vec", i.len(), i);
     context(
         "vec",
         map(separated_list0(is_a(".#@{}"), parse), |vec| {
@@ -137,20 +142,123 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse_vec(
         "
-        .a{
-                width-1:10px;
-                width-2:10px;
-            }
-       .g{
-            .h{
-                width-1:10px;
-                width-2:10px;
-            }
-            .i{
-                width-1:10px;
-                width-2:10px;
-            }
-        }
+        .fade-in-linear-enter-active,.fade-in-linear-leave-active {
+	-webkit-transition: opacity 200ms linear;
+	transition: opacity 200ms linear
+}
+
+.fade-in-linear-enter,.fade-in-linear-leave,.fade-in-linear-leave-active {
+	opacity: 0
+}
+
+.el-fade-in-linear-enter-active,.el-fade-in-linear-leave-active {
+	-webkit-transition: opacity 200ms linear;
+	transition: opacity 200ms linear
+}
+
+.el-fade-in-linear-enter,.el-fade-in-linear-leave,.el-fade-in-linear-leave-active {
+	opacity: 0;
+}
+
+.el-fade-in-enter-active,.el-fade-in-leave-active {
+	-webkit-transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+	transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.el-fade-in-enter,.el-fade-in-leave-active {
+	opacity: 0;
+}
+
+.el-zoom-in-center-enter-active,.el-zoom-in-center-leave-active {
+	-webkit-transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+	transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1)
+}
+
+.el-zoom-in-center-enter,.el-zoom-in-center-leave-active {
+	opacity: 0;
+	-webkit-transform: scaleX(0);
+	transform: scaleX(0)
+}
+
+.el-zoom-in-top-enter-active,.el-zoom-in-top-leave-active {
+	opacity: 1;
+	-webkit-transform: scaleY(1);
+	transform: scaleY(1);
+	-webkit-transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	-webkit-transform-origin: center top;
+	transform-origin: center top;
+}
+
+.el-zoom-in-top-enter,.el-zoom-in-top-leave-active {
+	opacity: 0;
+	-webkit-transform: scaleY(0);
+	transform: scaleY(0);
+}
+
+.el-zoom-in-bottom-enter-active,.el-zoom-in-bottom-leave-active {
+	opacity: 1;
+	-webkit-transform: scaleY(1);
+	transform: scaleY(1);
+	-webkit-transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	-webkit-transform-origin: center bottom;
+	transform-origin: center bottom;
+}
+
+.el-zoom-in-bottom-enter,.el-zoom-in-bottom-leave-active {
+	opacity: 0;
+	-webkit-transform: scaleY(0);
+	transform: scaleY(0);
+}
+
+.el-zoom-in-left-enter-active,.el-zoom-in-left-leave-active {
+	opacity: 1;
+	-webkit-transform: scale(1, 1);
+	transform: scale(1, 1);
+	-webkit-transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1),-webkit-transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+	-webkit-transform-origin: top left;
+	transform-origin: top left;
+}
+
+.el-zoom-in-left-enter,.el-zoom-in-left-leave-active {
+	opacity: 0;
+	-webkit-transform: scale(0.45, 0.45);
+	transform: scale(0.45, 0.45);
+}	
+
+
+.el-zoom-in-left-enter,.el-zoom-in-left-leave-active {
+	opacity: 0;
+	-webkit-transform: scale(0.45, 0.45);
+	transform: scale(0.45, 0.45);
+}
+
+.collapse-transition {
+	-webkit-transition: 0.3s height ease-in-out, 0.3s padding-top ease-in-out, 0.3s padding-bottom ease-in-out;
+	transition: 0.3s height ease-in-out, 0.3s padding-top ease-in-out, 0.3s padding-bottom ease-in-out;
+}
+
+.horizontal-collapse-transition {
+	-webkit-transition: 0.3s width ease-in-out, 0.3s padding-left ease-in-out, 0.3s padding-right ease-in-out;
+	transition: 0.3s width ease-in-out, 0.3s padding-left ease-in-out, 0.3s padding-right ease-in-out;
+}
+
+.el-list-enter-active,.el-list-leave-active {
+	-webkit-transition: all 1s;
+	transition: all 1s;
+}
+
+.el-list-enter,.el-list-leave-active {
+	opacity: 0;
+	-webkit-transform: translateY(-30px);
+	transform: translateY(-30px);
+}
     ",
     );
     dbg!(data);
