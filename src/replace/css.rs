@@ -83,7 +83,7 @@ fn object(i: &str) -> IResult<&str, CSS> {
                 ),
                 tag("}"),
             ),
-            parse,
+            delimited(multispace0, parse_vec, tag("}")),
         )),
     )(i)
 }
@@ -113,21 +113,7 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse_vec(
         "
-     
-        .d{
-            .a{
-                ?w-$1;
-                 ?h-$2
-            }
-            .b{
-                ?w-$1;
-                 ?h-$2
-            }
-        }
-    ",
-    );
-    /*
-      .w-(d<1,2>){
+     .w-(d<1,2>){
             width:$1px;
        }
        .h-(d<1,2>){
@@ -142,6 +128,20 @@ fn testNewCSS() {
            ?w-$1;
            ?h-$2
        }
+        .d{
+            .a{
+                ?w-$1;
+                 ?h-$2
+            }
+            .b{
+                ?w-$1;
+                 ?h-$2
+            }
+        }
+    ",
+    );
+    /*
+
     */
     dbg!(data);
     println!("done");
