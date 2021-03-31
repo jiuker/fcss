@@ -75,15 +75,15 @@ fn object(i: &str) -> IResult<&str, CSS> {
             delimited(
                 multispace0,
                 map(
-                    separated_list0(
+                    separated_list1(
                         tag(";"),
                         alt((extend, separated_pair(key, tag(":"), value))),
                     ),
                     |d| CSS::Object(d.into_iter().map(|(k, v)| (k.to_string(), v)).collect()),
                 ),
-                tag("}"),
+                multispace0,
             ),
-            delimited(multispace0, parse_vec, tag("}")),
+            delimited(multispace0, parse_vec, multispace0),
         )),
     )(i)
 }
@@ -104,7 +104,7 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
         "vec",
         delimited(
             multispace0,
-            map(separated_list0(multispace0, parse), CSS::VecObject),
+            map(separated_list0(tag("}"), parse), CSS::VecObject),
             multispace0,
         ),
     )(i)
@@ -113,27 +113,22 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse_vec(
         "
-     .w-(d<1,2>){
-            width:$1px;
-       }
-       .h-(d<1,2>){
-            width:$1px;
-            height:$1px
-       }
-       .wh(d<2,2>)(d<2,2>){
-           ?w-$1;
-           ?h-$2
-       }
-       .wh(d<2,2>)(d<2,3>){
-           ?w-$1;
-           ?h-$2
-       }
-        .d{
-            .a{
+        .d1{
+            .a1{
                 ?w-$1;
                  ?h-$2
             }
-            .b{
+            .b1{
+                ?w-$1;
+                 ?h-$2
+            }
+        }
+        .e2{
+            .a2{
+                ?w-$1;
+                 ?h-$2
+            }
+            .b2{
                 ?w-$1;
                  ?h-$2
             }
