@@ -101,7 +101,7 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 fn parse_vec(i: &str) -> IResult<&str, CSS> {
     dbg!("parse_vec", i);
     context(
-        "root",
+        "vec",
         delimited(
             multispace0,
             map(separated_list0(multispace0, parse), CSS::VecObject),
