@@ -45,9 +45,8 @@ fn key(i: &str) -> IResult<&str, &str> {
     dbg!("key", i);
     let (i, rsp) = take_while1(|c| c != ':' && c != '}')(i)?;
     // 判断是否是key
-    let (rsp, _) = multispace0(rsp)?;
-    none_of("}")(rsp)?;
-    Ok((i, rsp))
+    none_of("}")(rsp.trim())?;
+    Ok((i, rsp.trim()))
 }
 fn value(i: &str) -> IResult<&str, CSS> {
     dbg!("value", i);
@@ -65,23 +64,27 @@ fn value(i: &str) -> IResult<&str, CSS> {
 }
 fn selector(i: &str) -> IResult<&str, &str> {
     dbg!("selector", i);
+    let (i, _) = multispace0(i)?;
     take_while1(|c| c != '{')(i)
 }
 fn object(i: &str) -> IResult<&str, CSS> {
     dbg!("object", i);
     context(
         "object",
-        delimited(
-            multispace0,
-            map(
-                separated_list0(
-                    tag(";"),
-                    alt((extend, separated_pair(key, tag(":"), value))),
+        alt((
+            delimited(
+                multispace0,
+                map(
+                    separated_list0(
+                        tag(";"),
+                        alt((extend, separated_pair(key, tag(":"), value))),
+                    ),
+                    |d| CSS::Object(d.into_iter().map(|(k, v)| (k.to_string(), v)).collect()),
                 ),
-                |d| CSS::Object(d.into_iter().map(|(k, v)| (k.to_string(), v)).collect()),
+                tag("}"),
             ),
-            tag("}"),
-        ),
+            parse,
+        )),
     )(i)
 }
 fn parse(i: &str) -> IResult<&str, CSS> {
@@ -110,7 +113,21 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse_vec(
         "
-       .w-(d<1,2>){
+     
+        .d{
+            .a{
+                ?w-$1;
+                 ?h-$2
+            }
+            .b{
+                ?w-$1;
+                 ?h-$2
+            }
+        }
+    ",
+    );
+    /*
+      .w-(d<1,2>){
             width:$1px;
        }
        .h-(d<1,2>){
@@ -125,18 +142,7 @@ fn testNewCSS() {
            ?w-$1;
            ?h-$2
        }
-        .d{
-            .a{
-                ?w-$1;
-                 ?h-$2
-            }
-            .b{
-                ?w-$1;
-                 ?h-$2
-            }
-        }
-    ",
-    );
+    */
     dbg!(data);
     println!("done");
 }
