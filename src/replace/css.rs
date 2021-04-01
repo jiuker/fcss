@@ -6,6 +6,7 @@ use nom::character::is_alphabetic;
 use nom::error::ErrorKind;
 use nom::error::VerboseErrorKind::Context;
 use nom::multi::separated_list1;
+use nom::sequence::terminated;
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag, take_till1, take_while_m_n},
@@ -27,11 +28,9 @@ pub enum CSS {
     ExtendValue(String),
 }
 fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
-    dbg!("extend", i);
     let (i, _) = multispace0(i)?;
     let (i, _) = tag("?")(i)?;
     let (i, rsp) = take_while1(|c| c != ':' && c != ';' && c != '}')(i)?;
-    let (i, _) = multispace0(i)?;
     // 判断是不是结束
     if i.starts_with(";") {
         let (i_, _) = tag(";")(i)?;
@@ -43,16 +42,13 @@ fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
     Ok((i, (rsp.trim(), CSS::ExtendValue(rsp.trim().to_string()))))
 }
 fn key(i: &str) -> IResult<&str, &str> {
-    dbg!("key", i);
     let (i, rsp) = take_while1(|c| c != ':' && c != '}' && c != '{')(i)?;
     // 判断是否是key
     none_of("{}")(rsp.trim())?;
     Ok((i, rsp.trim()))
 }
 fn value(i: &str) -> IResult<&str, CSS> {
-    dbg!("value", i);
     let (i, rsp) = take_while1(|c| c != ';' && c != '}' && c != '{')(i)?;
-    let (i, _) = multispace0(i)?;
     // 判断是不是结束
     if i.starts_with(";") {
         let (i_, _) = tag(";")(i)?;
@@ -64,7 +60,6 @@ fn value(i: &str) -> IResult<&str, CSS> {
     Ok((i, CSS::Value(rsp.trim().to_string())))
 }
 fn selector(i: &str) -> IResult<&str, &str> {
-    dbg!("selector", i);
     let (i, _) = multispace0(i)?;
     let (i, rsp) = take_while1(|c| c != '{' && c != '}')(i)?;
     // 判断是否是key
@@ -72,7 +67,6 @@ fn selector(i: &str) -> IResult<&str, &str> {
     Ok((i, rsp.trim()))
 }
 fn object(i: &str) -> IResult<&str, CSS> {
-    dbg!("object", i);
     context(
         "object",
         alt((
@@ -92,11 +86,10 @@ fn object(i: &str) -> IResult<&str, CSS> {
     )(i)
 }
 fn parse(i: &str) -> IResult<&str, CSS> {
-    dbg!("parse", i);
     context(
         "node",
         (map(
-            separated_pair(selector, tag("{"), delimited(multispace0, object, tag("}"))),
+            separated_pair(selector, tag("{"), terminated(object, tag("}"))),
             |(k, v)| {
                 let mut h = HashMap::new();
                 h.insert(k.to_string(), v);
@@ -106,7 +99,6 @@ fn parse(i: &str) -> IResult<&str, CSS> {
     )(i)
 }
 fn parse_vec(i: &str) -> IResult<&str, CSS> {
-    dbg!("parse_vec", i);
     context(
         "vec",
         delimited(
