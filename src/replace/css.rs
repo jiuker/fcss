@@ -2,6 +2,7 @@ use crate::replace::css::CSS::Object;
 use nom::bytes::complete::{is_a, is_not, tag_no_case, take, take_till, take_while, take_while1};
 use nom::bytes::streaming::take_until;
 use nom::character::complete::{multispace1, none_of, satisfy};
+use nom::character::is_alphabetic;
 use nom::error::ErrorKind;
 use nom::error::VerboseErrorKind::Context;
 use nom::multi::separated_list1;
@@ -43,29 +44,32 @@ fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
 }
 fn key(i: &str) -> IResult<&str, &str> {
     dbg!("key", i);
-    let (i, rsp) = take_while1(|c| c != ':' && c != '}')(i)?;
+    let (i, rsp) = take_while1(|c| c != ':' && c != '}' && c != '{')(i)?;
     // 判断是否是key
-    none_of("}")(rsp.trim())?;
+    none_of("{}")(rsp.trim())?;
     Ok((i, rsp.trim()))
 }
 fn value(i: &str) -> IResult<&str, CSS> {
     dbg!("value", i);
-    let (i, rsp) = take_while1(|c| c != ';' && c != '}')(i)?;
+    let (i, rsp) = take_while1(|c| c != ';' && c != '}' && c != '{')(i)?;
     let (i, _) = multispace0(i)?;
     // 判断是不是结束
     if i.starts_with(";") {
         let (i_, _) = tag(";")(i)?;
         let (i_, _) = multispace0(i_)?;
         if i_.starts_with("}") {
-            return Ok((i_, CSS::Value(rsp.to_string())));
+            return Ok((i_, CSS::Value(rsp.trim().to_string())));
         }
     }
-    Ok((i, CSS::Value(rsp.to_string())))
+    Ok((i, CSS::Value(rsp.trim().to_string())))
 }
 fn selector(i: &str) -> IResult<&str, &str> {
     dbg!("selector", i);
     let (i, _) = multispace0(i)?;
-    take_while1(|c| c != '{')(i)
+    let (i, rsp) = take_while1(|c| c != '{' && c != '}')(i)?;
+    // 判断是否是key
+    none_of("{}")(rsp.trim())?;
+    Ok((i, rsp.trim()))
 }
 fn object(i: &str) -> IResult<&str, CSS> {
     dbg!("object", i);
@@ -91,11 +95,14 @@ fn parse(i: &str) -> IResult<&str, CSS> {
     dbg!("parse", i);
     context(
         "node",
-        (map(separated_pair(selector, tag("{"), object), |(k, v)| {
-            let mut h = HashMap::new();
-            h.insert(k.to_string(), v);
-            CSS::Object(h)
-        })),
+        (map(
+            separated_pair(selector, tag("{"), delimited(multispace0, object, tag("}"))),
+            |(k, v)| {
+                let mut h = HashMap::new();
+                h.insert(k.to_string(), v);
+                CSS::Object(h)
+            },
+        )),
     )(i)
 }
 fn parse_vec(i: &str) -> IResult<&str, CSS> {
@@ -104,7 +111,7 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
         "vec",
         delimited(
             multispace0,
-            map(separated_list0(tag("}"), parse), CSS::VecObject),
+            map(separated_list1(multispace1, parse), CSS::VecObject),
             multispace0,
         ),
     )(i)
@@ -113,14 +120,35 @@ fn parse_vec(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse_vec(
         "
+        .a{
+                            width:1px;
+                            heigt:1px;
+
+        }
+ .b{
+                            width:1px;
+                            heigt:1px
+
+        }
+ .c{
+                            heigt:1px;
+
+        }
         .d1{
             .a1{
                 ?w-$1;
+                width:1px;
                  ?h-$2
             }
             .b1{
                 ?w-$1;
                  ?h-$2
+            }
+            .c1{
+                 .a1{
+                    ?w-$1;
+                     ?h-$2
+                }
             }
         }
         .e2{
