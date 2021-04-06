@@ -3,8 +3,8 @@ use nom::bytes::complete::{is_a, is_not, tag_no_case, take, take_till, take_whil
 use nom::bytes::streaming::take_until;
 use nom::character::complete::{multispace1, none_of, satisfy};
 use nom::character::is_alphabetic;
-use nom::error::ErrorKind;
 use nom::error::VerboseErrorKind::Context;
+use nom::error::{ErrorKind, ParseError};
 use nom::multi::separated_list1;
 use nom::sequence::terminated;
 use nom::{
@@ -19,6 +19,7 @@ use nom::{
     IResult, Parser,
 };
 use std::collections::HashMap;
+use std::fs::read_to_string;
 
 #[derive(Debug, PartialEq)]
 pub enum CSS {
@@ -26,19 +27,18 @@ pub enum CSS {
     Value(String),
     ExtendValue(String),
 }
-
+// 有些是;之后是需要消除的
+fn end(i: &str) -> IResult<&str, &str> {
+    delimited(tag(";"), preceded(multispace0, peek(tag("}"))), multispace0)(i)
+}
 fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
     let (i, _) = multispace0(i)?;
     let (i, _) = tag("?")(i)?;
     let (i, rsp) = take_while1(|c| c != ':' && c != ';' && c != '}')(i)?;
     // 判断是不是结束
-    if i.starts_with(";") {
-        let (i_, _) = tag(";")(i)?;
-        let (i_, _) = multispace0(i_)?;
-        if i_.starts_with("}") {
-            return Ok((i_, (rsp.trim(), CSS::ExtendValue(rsp.trim().to_string()))));
-        }
-    }
+    if let Ok((i, _)) = end(i) {
+        return Ok((i, (rsp.trim(), CSS::ExtendValue(rsp.trim().to_string()))));
+    };
     Ok((i, (rsp.trim(), CSS::ExtendValue(rsp.trim().to_string()))))
 }
 fn key(i: &str) -> IResult<&str, &str> {
@@ -50,12 +50,8 @@ fn key(i: &str) -> IResult<&str, &str> {
 fn value(i: &str) -> IResult<&str, CSS> {
     let (i, rsp) = take_while1(|c| c != ';' && c != '}' && c != '{')(i)?;
     // 判断是不是结束
-    if i.starts_with(";") {
-        let (i_, _) = tag(";")(i)?;
-        let (i_, _) = multispace0(i_)?;
-        if i_.starts_with("}") {
-            return Ok((i_, CSS::Value(rsp.trim().to_string())));
-        }
+    if let Ok((i, _)) = end(i) {
+        return Ok((i, CSS::Value(rsp.trim().to_string())));
     }
     Ok((i, CSS::Value(rsp.trim().to_string())))
 }
@@ -105,7 +101,7 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse(
         "
-        .x{
+        .x a{
             .x{
                 .x{
                     .y{
