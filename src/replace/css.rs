@@ -31,7 +31,6 @@ fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
 fn key(i: &str) -> IResult<&str, &str> {
     let (i, rsp) = take_while1(|c| c != ':' && c != '}' && c != '{')(i)?;
     // 判断是否是key
-    none_of("{}")(rsp.trim())?;
     Ok((i, rsp.trim()))
 }
 fn value(i: &str) -> IResult<&str, CSS> {
@@ -43,10 +42,8 @@ fn value(i: &str) -> IResult<&str, CSS> {
     Ok((i, CSS::Value(rsp.trim().to_string())))
 }
 fn selector(i: &str) -> IResult<&str, String> {
-    let (i, _) = multispace0(i)?;
     let (i, rsp) = take_while1(|c| c != '{' && c != '}')(i)?;
     // 判断是否是key
-    none_of("{}")(rsp.trim())?;
     Ok((i, rsp.trim().to_string()))
 }
 fn object(i: &str) -> IResult<&str, CSS> {
