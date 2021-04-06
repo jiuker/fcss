@@ -1,25 +1,12 @@
-use crate::replace::css::CSS::Object;
-use nom::bytes::complete::{is_a, is_not, tag_no_case, take, take_till, take_while, take_while1};
-use nom::bytes::streaming::take_until;
-use nom::character::complete::{multispace1, none_of, satisfy};
-use nom::character::is_alphabetic;
-use nom::error::VerboseErrorKind::Context;
-use nom::error::{ErrorKind, ParseError};
+use nom::branch::alt;
+use nom::bytes::complete::{tag, take_while1};
+use nom::character::complete::{multispace0, multispace1, none_of};
+use nom::combinator::{map, peek};
+use nom::error::context;
 use nom::multi::separated_list1;
-use nom::sequence::terminated;
-use nom::{
-    branch::alt,
-    bytes::complete::{escaped, tag, take_till1, take_while_m_n},
-    character::complete::multispace0,
-    combinator::{map, peek, value as n_value},
-    error::context,
-    multi::separated_list0,
-    number::complete::double,
-    sequence::{delimited, preceded, separated_pair},
-    IResult, Parser,
-};
+use nom::sequence::{delimited, preceded, separated_pair, terminated};
+use nom::IResult;
 use std::collections::HashMap;
-use std::fs::read_to_string;
 
 #[derive(Debug, PartialEq)]
 pub enum CSS {
