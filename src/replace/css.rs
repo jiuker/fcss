@@ -24,9 +24,9 @@ use std::collections::HashMap;
 pub enum CSS {
     Object(HashMap<String, CSS>),
     Value(String),
-    VecObject(Vec<CSS>),
     ExtendValue(String),
 }
+
 fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
     let (i, _) = multispace0(i)?;
     let (i, _) = tag("?")(i)?;
@@ -59,12 +59,12 @@ fn value(i: &str) -> IResult<&str, CSS> {
     }
     Ok((i, CSS::Value(rsp.trim().to_string())))
 }
-fn selector(i: &str) -> IResult<&str, &str> {
+fn selector(i: &str) -> IResult<&str, String> {
     let (i, _) = multispace0(i)?;
     let (i, rsp) = take_while1(|c| c != '{' && c != '}')(i)?;
     // 判断是否是key
     none_of("{}")(rsp.trim())?;
-    Ok((i, rsp.trim()))
+    Ok((i, rsp.trim().to_string()))
 }
 fn object(i: &str) -> IResult<&str, CSS> {
     context(
@@ -81,37 +81,46 @@ fn object(i: &str) -> IResult<&str, CSS> {
                 ),
                 multispace0,
             ),
-            delimited(multispace0, parse_vec, multispace0),
+            delimited(multispace0, parse, multispace0),
         )),
     )(i)
 }
 fn parse(i: &str) -> IResult<&str, CSS> {
     context(
         "node",
-        (map(
-            separated_pair(selector, tag("{"), terminated(object, tag("}"))),
-            |(k, v)| {
-                let mut h = HashMap::new();
-                h.insert(k.to_string(), v);
-                CSS::Object(h)
-            },
-        )),
-    )(i)
-}
-fn parse_vec(i: &str) -> IResult<&str, CSS> {
-    context(
-        "vec",
         delimited(
             multispace0,
-            map(separated_list1(multispace1, parse), CSS::VecObject),
+            map(
+                separated_list1(
+                    multispace1,
+                    separated_pair(selector, tag("{"), terminated(object, tag("}"))),
+                ),
+                |d| CSS::Object(d.into_iter().collect()),
+            ),
             multispace0,
         ),
     )(i)
 }
 #[test]
 fn testNewCSS() {
-    let data = parse_vec(
+    let data = parse(
         "
+        .x{
+            .x{
+                .x{
+                    .y{
+                      width:1px;
+                            heigt:1px;
+                     ?h-$2
+
+                    }
+                    .x{
+                      width:1px;
+                            heigt:1px;
+                    }
+                }
+            }
+        }
         .a{
                             width:1px;
                             heigt:1px;
