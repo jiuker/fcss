@@ -15,6 +15,26 @@ pub enum CSS {
     ExtendValue(String),
     Import(String),
 }
+impl CSS {
+    pub fn have_import(&self) -> bool {
+        let mut r = false;
+        match self {
+            CSS::Object(d) => {
+                for (p, c) in d {
+                    match c {
+                        CSS::Import(i) => {
+                            r = true;
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        };
+        r
+    }
+}
 fn import(i: &str) -> IResult<&str, (String, CSS)> {
     let (i, rsp) = take_while1(|c| c != ':' && c != ';' && c != '}' && c != '{')(i)?;
     let (rsp, _) = tag("@import(")(rsp)?;
@@ -162,6 +182,9 @@ fn testNewCSS() {
     /*
 
     */
-    dbg!(data);
+    // dbg!(data);
+    if let Ok((_, data)) = &data {
+        dbg!(data.have_import());
+    };
     println!("done");
 }
