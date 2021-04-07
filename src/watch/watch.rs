@@ -43,7 +43,6 @@ impl Watch {
                 };
             }
         }
-        dbg!(self.path_modified.lock().unwrap());
         return true;
     }
 
