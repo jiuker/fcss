@@ -132,9 +132,8 @@ fn testNewCSS() {
                 .x{
                     .y{
                       width:1px;
-                            heigt:1px;
-                     ?h-$2
-
+                      heigt:1px;
+                      ?h-$2
                     }
                     .x{
                       width:1px;
