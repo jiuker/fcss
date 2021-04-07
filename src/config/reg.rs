@@ -13,6 +13,17 @@ pub enum CSS {
     Object(HashMap<String, CSS>),
     Value(String),
     ExtendValue(String),
+    Import(String),
+}
+fn import(i: &str) -> IResult<&str, (String, CSS)> {
+    let (i, rsp) = take_while1(|c| c != ':' && c != ';' && c != '}' && c != '{')(i)?;
+    let (rsp, _) = tag("@import(")(rsp)?;
+    let (_, rsp) = take_while1(|c| c != ')')(rsp)?;
+    let (i, _) = tag(";")(i)?;
+    Ok((
+        i,
+        (rsp.trim().to_string(), CSS::Import(rsp.trim().to_string())),
+    ))
 }
 // 有些是;之后是需要消除的
 fn end(i: &str) -> IResult<&str, &str> {
@@ -30,7 +41,6 @@ fn extend(i: &str) -> IResult<&str, (&str, CSS)> {
 }
 fn key(i: &str) -> IResult<&str, &str> {
     let (i, rsp) = take_while1(|c| c != ':' && c != '}' && c != '{')(i)?;
-    // 判断是否是key
     Ok((i, rsp.trim()))
 }
 fn value(i: &str) -> IResult<&str, CSS> {
@@ -73,7 +83,10 @@ fn parse(i: &str) -> IResult<&str, CSS> {
             map(
                 separated_list1(
                     multispace1,
-                    separated_pair(selector, tag("{"), terminated(object, tag("}"))),
+                    alt((
+                        import,
+                        separated_pair(selector, tag("{"), terminated(object, tag("}"))),
+                    )),
                 ),
                 |d| CSS::Object(d.into_iter().collect()),
             ),
@@ -85,6 +98,8 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse(
         "
+        @import(./test1);
+        @import(./test2);
         .x a{
             .x{
                 .x{
