@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while1};
-use nom::character::complete::{multispace0, multispace1, none_of};
+use nom::character::complete::{line_ending, multispace0, multispace1, none_of};
 use nom::combinator::{map, peek};
 use nom::error::context;
 use nom::multi::separated_list1;
@@ -14,6 +14,7 @@ pub enum CSS {
     Value(String),
     ExtendValue(String),
     Import(String),
+    Comment(String),
 }
 impl CSS {
     pub fn have_import(&self) -> bool {
@@ -34,6 +35,11 @@ impl CSS {
         };
         r
     }
+}
+fn comment(i: &str) -> IResult<&str, (String, CSS)> {
+    let (i, rsp) = take_while1(|c| c != '\n')(i)?;
+    tag("//")(rsp)?;
+    Ok((i, ("".to_string(), CSS::Comment(rsp.trim().to_string()))))
 }
 fn import(i: &str) -> IResult<&str, (String, CSS)> {
     let (i, rsp) = take_while1(|c| c != ':' && c != ';' && c != '}' && c != '{')(i)?;
@@ -104,11 +110,12 @@ fn parse(i: &str) -> IResult<&str, CSS> {
                 separated_list1(
                     multispace1,
                     alt((
+                        comment,
                         import,
                         separated_pair(selector, tag("{"), terminated(object, tag("}"))),
                     )),
                 ),
-                |d| CSS::Object(d.into_iter().collect()),
+                |d| CSS::Object(d.into_iter().filter(|(k, v)| !k.is_empty()).collect()),
             ),
             multispace0,
         ),
@@ -118,7 +125,7 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 fn testNewCSS() {
     let data = parse(
         "
-        @import(./test1);
+        // @import(./test1);
         @import(./test2);
         .x a{
             .x{
@@ -182,9 +189,9 @@ fn testNewCSS() {
     /*
 
     */
-    // dbg!(data);
-    if let Ok((_, data)) = &data {
-        dbg!(data.have_import());
-    };
+    dbg!(data);
+    // if let Ok((_, data)) = &data {
+    //     dbg!(data.have_import());
+    // };
     println!("done");
 }
