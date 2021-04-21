@@ -1,4 +1,5 @@
-    .t11{
+        @import(/home/jiuker/rustworkspace/fcss/res/test/reg/test.reg);
+    t11{
         .c{
             heigth:10px;
         }

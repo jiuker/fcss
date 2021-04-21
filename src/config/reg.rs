@@ -96,7 +96,7 @@ impl CSS {
                         }
                         CSS::Import(d) => {
                             if loaded_import.contains(d) {
-                                return Err(Box::from("出现循环引用!"));
+                                return Err(Box::from(format!("{} loop import !", d)));
                             }
                             let mut import_file = File::open(d)?;
                             let mut file_body = Default::default();
