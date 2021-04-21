@@ -42,10 +42,8 @@ impl CSS {
         let mut loaded_import = Default::default();
         while self.have_import() {
             let format_css = self.get_import_css_str(&mut loaded_import)?;
-            dbg!(format_css.clone());
             let (_, mut data) = parse(format_css.as_str()).ok().unwrap();
             *self = data;
-            dbg!(self.have_import());
         }
         Ok(())
     }
