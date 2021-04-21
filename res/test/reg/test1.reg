@@ -1,9 +1,12 @@
-        @import(/home/jiuker/rustworkspace/fcss/res/test/reg/test.reg);
-    t11{
-        .c{
-            heigth:10px;
-        }
-        .e{
-            width:10px;
-        }
+t11{
+    .c{
+        heigth:10px;
+        ?w-$1;
+                         ?h-$2
     }
+    .e{
+        width:10px;
+        ?w-$1;
+                         ?h-$2
+    }
+}

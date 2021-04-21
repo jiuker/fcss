@@ -1,0 +1,4 @@
+    @import(/home/jiuker/rustworkspace/fcss/res/test/reg/loop1.reg);
+    .a{
+        width:10px;
+    }

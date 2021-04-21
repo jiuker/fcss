@@ -8,6 +8,7 @@ use nom::multi::separated_list1;
 use nom::sequence::{delimited, preceded, separated_pair, terminated};
 use nom::IResult;
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
@@ -211,7 +212,7 @@ fn parse(i: &str) -> IResult<&str, CSS> {
     )(i)
 }
 #[test]
-fn testNewCSS() {
+fn test_css_parse() {
     let (_, mut data) = parse(
         "
         // @import(./test1);
@@ -276,10 +277,23 @@ fn testNewCSS() {
     )
     .ok()
     .unwrap();
-    /*
-
-    */
-    // dbg!(data);
     data.extend_import().unwrap();
-    println!("done");
+    let c = data
+        .to_string()
+        .unwrap()
+        .into_bytes()
+        .into_iter()
+        .filter(|c| *c == '?' as u8)
+        .count();
+    // 是否全部解析import成功
+    assert_eq!(c, 19);
+    // 测试循环检测是否成功
+    let (_, mut data) = parse("@import( /home/jiuker/rustworkspace/fcss/res/test/reg/loop.reg );")
+        .ok()
+        .unwrap();
+    if let Err(e) = data.extend_import() {
+        dbg!(e);
+    } else {
+        panic!("shouldn't")
+    }
 }
