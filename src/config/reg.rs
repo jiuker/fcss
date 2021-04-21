@@ -1,3 +1,4 @@
+use crate::pkg::result::CommonResult;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while1};
 use nom::character::complete::{line_ending, multispace0, multispace1, none_of};
@@ -6,7 +7,9 @@ use nom::error::context;
 use nom::multi::separated_list1;
 use nom::sequence::{delimited, preceded, separated_pair, terminated};
 use nom::IResult;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::io::Read;
 
 #[derive(Debug, PartialEq)]
 pub enum CSS {
@@ -34,6 +37,94 @@ impl CSS {
             _ => {}
         };
         r
+    }
+    pub fn extend_import(&mut self) -> CommonResult<()> {
+        let mut loaded_import = Default::default();
+        while self.have_import() {
+            let format_css = self.get_import_css_str(&mut loaded_import)?;
+            dbg!(format_css.clone());
+            let (_, mut data) = parse(format_css.as_str()).ok().unwrap();
+            *self = data;
+            dbg!(self.have_import());
+        }
+        Ok(())
+    }
+    pub fn to_string(&self) -> CommonResult<String> {
+        let mut rsl = Default::default();
+        match self {
+            CSS::Object(d) => {
+                for (k, v) in d {
+                    match v {
+                        CSS::Value(d) => {
+                            rsl = format!("{}{}:{};{}", rsl, k, d, '\n');
+                        }
+                        CSS::ExtendValue(d) => {
+                            rsl = format!("{}?{};{}", rsl, k, '\n');
+                        }
+                        CSS::Import(d) => {
+                            rsl = format!("{}@import({}){}", rsl, d, '\n');
+                        }
+                        _ => {
+                            rsl = format!(
+                                "{}{}{}{}{}{}{}",
+                                rsl,
+                                k,
+                                "{",
+                                '\n',
+                                v.to_string()?,
+                                "}",
+                                '\n'
+                            )
+                        }
+                    }
+                }
+            }
+            _ => {}
+        };
+        Ok(rsl)
+    }
+    fn get_import_css_str(&self, loaded_import: &mut HashSet<String>) -> CommonResult<String> {
+        let mut rsl = Default::default();
+        let mut import_str = Default::default();
+        match self {
+            CSS::Object(d) => {
+                for (k, v) in d {
+                    match v {
+                        CSS::Value(d) => {
+                            rsl = format!("{}{}:{};{}", rsl, k, d, '\n');
+                        }
+                        CSS::ExtendValue(d) => {
+                            rsl = format!("{}?{};{}", rsl, k, '\n');
+                        }
+                        CSS::Import(d) => {
+                            if loaded_import.contains(d) {
+                                return Err(Box::from("出现循环引用!"));
+                            }
+                            let mut import_file = File::open(d)?;
+                            let mut file_body = Default::default();
+                            import_file.read_to_string(&mut file_body)?;
+                            import_str = format!("  {}  {}\n", import_str, file_body);
+                            loaded_import.insert(d.clone());
+                        }
+                        _ => {
+                            rsl = format!(
+                                "{}{}{}{}{}{}{}",
+                                rsl,
+                                k,
+                                "{",
+                                '\n',
+                                v.to_string()?,
+                                "}",
+                                '\n'
+                            )
+                        }
+                    }
+                }
+            }
+            _ => {}
+        };
+        rsl = format!("{}{}", import_str, rsl);
+        Ok(rsl)
     }
 }
 fn comment(i: &str) -> IResult<&str, (String, CSS)> {
@@ -123,10 +214,10 @@ fn parse(i: &str) -> IResult<&str, CSS> {
 }
 #[test]
 fn testNewCSS() {
-    let data = parse(
+    let (_, mut data) = parse(
         "
         // @import(./test1);
-        @import(./test2);
+        @import( /home/jiuker/rustworkspace/fcss/res/test/reg/test.reg );
         .x a{
             .x{
                 .x{
@@ -184,13 +275,13 @@ fn testNewCSS() {
             }
         }
     ",
-    );
+    )
+    .ok()
+    .unwrap();
     /*
 
     */
-    dbg!(data);
-    // if let Ok((_, data)) = &data {
-    //     dbg!(data.have_import());
-    // };
+    // dbg!(data);
+    data.extend_import().unwrap();
     println!("done");
 }
