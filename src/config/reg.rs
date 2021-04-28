@@ -1,4 +1,5 @@
 use crate::pkg::result::CommonResult;
+use crate::replace::signature::class_to_signature;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while1};
 use nom::character::complete::{line_ending, multispace0, multispace1, none_of};
@@ -21,6 +22,18 @@ pub enum CSS {
     Comment(String),
 }
 impl CSS {
+    pub fn get_signature(&self) -> CommonResult<HashSet<String>> {
+        let mut temp: Vec<String> = Default::default();
+        match self {
+            CSS::Object(d) => {
+                for (p, c) in d {
+                    temp.push(p.clone());
+                }
+            }
+            _ => {}
+        };
+        return class_to_signature(temp);
+    }
     pub fn have_import(&self) -> bool {
         let mut r = false;
         match self {
@@ -268,7 +281,7 @@ fn test_css_parse() {
                 ?w-$1;
                  ?h-$2
             }
-            .b2{
+            .b2-(1)-(2){
                 ?w-$1;
                  ?h-$2
             }
@@ -296,4 +309,5 @@ fn test_css_parse() {
     } else {
         panic!("shouldn't")
     }
+    dbg!(data.get_signature());
 }
