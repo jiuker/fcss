@@ -13,7 +13,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CSS {
     Object(HashMap<String, CSS>),
     Value(String),
@@ -22,8 +22,8 @@ pub enum CSS {
     Comment(String),
 }
 impl CSS {
-    pub fn get_signature(&self) -> CommonResult<HashSet<String>> {
-        let mut temp: Vec<String> = Default::default();
+    pub fn get_signature(&self) -> CommonResult<HashMap<String, Vec<CSS>>> {
+        let mut rsl: HashMap<String, Vec<CSS>> = Default::default();
         match self {
             CSS::Object(d) => {
                 for (p, c) in d {
@@ -32,15 +32,38 @@ impl CSS {
                         CSS::ExtendValue(d) => {}
                         CSS::Import(d) => {}
                         _ => {
-                            temp.push(p.clone());
+                            let mut key = "".to_string();
+                            if p.contains("-") {
+                                let mut index = -1;
+                                key = p
+                                    .split("-")
+                                    .map(|d| {
+                                        index += 1;
+                                        if index == 0 {
+                                            return d.to_string();
+                                        } else {
+                                            return format!("${}", index);
+                                        }
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join("-");
+                            } else {
+                                key = p.clone();
+                            }
+                            match rsl.get_mut(&key) {
+                                Some(v) => v.push(c.clone()),
+                                None => {
+                                    rsl.insert(key, vec![c.clone()]);
+                                    ()
+                                }
+                            };
                         }
                     }
                 }
             }
             _ => {}
         };
-        dbg!(temp.clone());
-        return class_to_signature(temp);
+        return Ok(rsl);
     }
     pub fn have_import(&self) -> bool {
         let mut r = false;
