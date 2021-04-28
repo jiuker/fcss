@@ -7,7 +7,7 @@ use nom::combinator::{map, peek};
 use nom::error::context;
 use nom::multi::separated_list1;
 use nom::sequence::{delimited, preceded, separated_pair, terminated};
-use nom::IResult;
+use nom::{dbg_dmp, IResult};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fs::File;
@@ -27,11 +27,19 @@ impl CSS {
         match self {
             CSS::Object(d) => {
                 for (p, c) in d {
-                    temp.push(p.clone());
+                    match c {
+                        CSS::Value(d) => {}
+                        CSS::ExtendValue(d) => {}
+                        CSS::Import(d) => {}
+                        _ => {
+                            temp.push(p.clone());
+                        }
+                    }
                 }
             }
             _ => {}
         };
+        dbg!(temp.clone());
         return class_to_signature(temp);
     }
     pub fn have_import(&self) -> bool {
