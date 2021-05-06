@@ -20,6 +20,8 @@ fn main() {
         .value_of("config")
         .unwrap_or("./res/test/config.json");
     println!("load config {} file", config_path);
-    let mut config_file = File::open(config_path).unwrap();
-    let config: Config = serde_json::from_reader(config_file).unwrap();
+    let config: Config;
+    {
+        config = serde_json::from_reader(File::open(config_path).unwrap()).unwrap();
+    }
 }
