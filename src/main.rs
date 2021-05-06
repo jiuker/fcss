@@ -24,4 +24,5 @@ fn main() {
     {
         config = serde_json::from_reader(File::open(config_path).unwrap()).unwrap();
     }
+    println!("config {:?}", config)
 }
