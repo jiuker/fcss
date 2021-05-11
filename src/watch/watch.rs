@@ -78,17 +78,17 @@ impl Watch {
                 if event.mask.contains(EventMask::CREATE) || event.mask.contains(EventMask::MODIFY)
                 {
                     if !event.mask.contains(EventMask::ISDIR) {
-                        match self
-                            .file_dirs
-                            .lock()
-                            .unwrap()
-                            .get(&*event.name.unwrap().to_str().unwrap().to_string())
-                        {
+                        let mut file_dirs = self.file_dirs.lock().unwrap();
+                        let mut have_match = false;
+                        let watch_file_name = event.name.unwrap().to_str().unwrap().to_string();
+                        if watch_file_name.ends_with("~") {
+                            continue;
+                        }
+                        match file_dirs.get(&watch_file_name) {
                             None => {}
                             Some(d) => {
                                 for dir in d.iter() {
-                                    let full_path =
-                                        Path::new(dir).join(event.name.unwrap().to_str().unwrap());
+                                    let full_path = Path::new(dir).join(watch_file_name.clone());
                                     let m_time = full_path.metadata().unwrap().modified().unwrap();
                                     if SystemTime::now()
                                         .duration_since(m_time)
@@ -96,11 +96,52 @@ impl Watch {
                                         .as_secs_f32()
                                         < 1.0
                                     {
+                                        have_match = true;
                                         self.sender.send(full_path.to_str().unwrap().to_string());
                                         break;
                                     }
                                 }
                             }
+                        }
+                        let mut match_dir = "".to_string();
+                        // 没有匹配到,就遍历
+                        if !have_match {
+                            println!("触发全部遍历!");
+                            for (_, dirs) in file_dirs.iter() {
+                                for dir in dirs {
+                                    let full_path = Path::new(dir).join(watch_file_name.clone());
+                                    let m_time = full_path.metadata().unwrap().modified().unwrap();
+                                    if SystemTime::now()
+                                        .duration_since(m_time)
+                                        .unwrap()
+                                        .as_secs_f32()
+                                        < 1.0
+                                    {
+                                        have_match = true;
+                                        match_dir = dir.clone();
+                                        self.sender.send(full_path.to_str().unwrap().to_string());
+                                        break;
+                                    }
+                                }
+                                if have_match {
+                                    break;
+                                }
+                            }
+                        }
+                        if !have_match {
+                            panic!("未查找到该文件!")
+                        } else {
+                            match file_dirs.get_mut(&*watch_file_name) {
+                                None => {
+                                    let mut set = HashSet::new();
+                                    set.insert(match_dir);
+                                    file_dirs.insert(watch_file_name, set);
+                                }
+                                Some(d) => {
+                                    d.insert(match_dir);
+                                }
+                            }
+                            println!("该文件已增加处理!");
                         }
                     }
                 }
