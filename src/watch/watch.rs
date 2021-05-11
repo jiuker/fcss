@@ -79,6 +79,7 @@ impl Watch {
                     if !event.mask.contains(EventMask::ISDIR) {
                         let mut file_dirs = self.file_dirs.lock().unwrap();
                         let mut have_match = false;
+                        let mut walk_match = false;
                         let watch_file_name = event.name.unwrap().to_str().unwrap().to_string();
                         if watch_file_name.ends_with("~") {
                             continue;
@@ -117,6 +118,7 @@ impl Watch {
                                         < 1.0
                                     {
                                         have_match = true;
+                                        walk_match = true;
                                         match_dir = dir.clone();
                                         self.sender.send(full_path.to_str().unwrap().to_string());
                                         break;
@@ -130,17 +132,19 @@ impl Watch {
                         if !have_match {
                             panic!("未查找到该文件!")
                         } else {
-                            match file_dirs.get_mut(&*watch_file_name) {
-                                None => {
-                                    let mut set = HashSet::new();
-                                    set.insert(match_dir);
-                                    file_dirs.insert(watch_file_name, set);
+                            if walk_match {
+                                match file_dirs.get_mut(&*watch_file_name) {
+                                    None => {
+                                        let mut set = HashSet::new();
+                                        set.insert(match_dir);
+                                        file_dirs.insert(watch_file_name, set);
+                                    }
+                                    Some(d) => {
+                                        d.insert(match_dir);
+                                    }
                                 }
-                                Some(d) => {
-                                    d.insert(match_dir);
-                                }
+                                println!("该文件已增加处理!");
                             }
-                            println!("该文件已增加处理!");
                         }
                     }
                 }
