@@ -36,7 +36,25 @@ impl Watch {
         }
     }
     pub fn add(&self, path: String) {
-        let (each_dirs, file_dirs) = walk_all_dir(&path).unwrap();
+        let (_, file_dirs) = walk_all_dir(&path).unwrap();
+        let mut each_dirs: HashSet<String> = Default::default();
+        for f_d in file_dirs {
+            let mut file_dirs = self.file_dirs.lock().unwrap();
+            match file_dirs.get_mut(&f_d.0) {
+                None => {
+                    if f_d.0.ends_with(&self.file_type) {
+                        println!("Add file {} to watch Success", f_d.0.clone());
+                        let mut set = HashSet::new();
+                        set.extend(f_d.1.clone());
+                        each_dirs.extend(f_d.1);
+                        file_dirs.insert(f_d.0, set);
+                    }
+                }
+                Some(d) => {
+                    d.extend(f_d.1);
+                }
+            };
+        }
         for each_dir in each_dirs {
             self.file_notify
                 .lock()
@@ -44,20 +62,6 @@ impl Watch {
                 .add_watch(&each_dir, WatchMask::MODIFY | WatchMask::CREATE)
                 .expect("Failed to add inotify watch");
             println!("Add dir {} to watch Success", each_dir)
-        }
-        for f_d in file_dirs {
-            println!("Add file {} to watch Success", f_d.0.clone());
-            let mut file_dirs = self.file_dirs.lock().unwrap();
-            match file_dirs.get_mut(&f_d.0) {
-                None => {
-                    let mut set = HashSet::new();
-                    set.extend(f_d.1);
-                    file_dirs.insert(f_d.0, set);
-                }
-                Some(d) => {
-                    d.extend(f_d.1);
-                }
-            };
         }
     }
 
