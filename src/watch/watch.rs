@@ -55,10 +55,9 @@ impl Watch {
                 }
             };
         }
+        let mut file_notify = self.file_notify.lock().unwrap();
         for each_dir in each_dirs {
-            self.file_notify
-                .lock()
-                .unwrap()
+            file_notify
                 .add_watch(&each_dir, WatchMask::MODIFY | WatchMask::CREATE)
                 .expect("Failed to add inotify watch");
             println!("Add dir {} to watch Success", each_dir)
