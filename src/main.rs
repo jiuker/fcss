@@ -35,6 +35,7 @@ fn main() {
     let (_, mut css) = parse(config.reg.as_str()).ok().unwrap();
     css.extend_import().unwrap();
     println!("load css:{}", css.to_string().unwrap());
+    println!("load css match {:?}", css.get_signature().unwrap().keys());
     let watch = Arc::new(Watch::new("vue".to_string()));
     for dir in config.watch_dir {
         watch.add(dir);
