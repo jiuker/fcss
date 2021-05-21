@@ -1,5 +1,6 @@
 use clap::{App, Arg};
 use fcss::config::config::Config;
+use fcss::config::reg::parse;
 use fcss::pkg::dir::walk_all_dir;
 use fcss::watch::watch::Watch;
 use inotify::{EventMask, Inotify, WatchMask};
@@ -30,7 +31,10 @@ fn main() {
         config = serde_json::from_reader(File::open(config_path).unwrap()).unwrap();
     }
     println!("config {:?}", config);
-
+    println!("ready to load css!");
+    let (_, mut css) = parse(config.reg.as_str()).ok().unwrap();
+    css.extend_import().unwrap();
+    println!("load css:{}", css.to_string().unwrap());
     let watch = Arc::new(Watch::new("vue".to_string()));
     for dir in config.watch_dir {
         watch.add(dir);

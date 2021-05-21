@@ -235,7 +235,7 @@ fn object(i: &str) -> IResult<&str, CSS> {
         )),
     )(i)
 }
-fn parse(i: &str) -> IResult<&str, CSS> {
+pub fn parse(i: &str) -> IResult<&str, CSS> {
     context(
         "node",
         delimited(
